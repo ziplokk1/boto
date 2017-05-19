@@ -20,6 +20,7 @@
 # IN THE SOFTWARE.
 import xml.sax
 import hashlib
+import base64
 import string
 import collections
 from boto.connection import AWSQueryConnection
@@ -54,7 +55,7 @@ api_version_path = {
     'OffAmazonPayments': ('2013-01-01', 'SellerId',
                           '/OffAmazonPayments/2013-01-01'),
 }
-content_md5 = lambda c: encodebytes(hashlib.md5(c).digest()).strip()
+content_md5 = lambda c: base64.b64encode(hashlib.md5(c).digest())
 decorated_attrs = ('action', 'response', 'section',
                    'quota', 'restore', 'version')
 api_call_map = {}
@@ -297,6 +298,15 @@ class MWSConnection(AWSQueryConnection):
     def _required_auth_capability(self):
         return ['mws']
 
+    def _content_md5_matches_header(self, content, header):
+        content = content_md5(content)
+        return content == bytes(header, 'utf8')
+
+    def _assert_content_md5(self, response):
+        digest = response.getheader('Content-MD5')
+        if digest is not None:
+            assert self._content_md5_matches_header(response.read(), digest)
+
     def _post_request(self, request, params, parser, body='', headers=None):
         """Make a POST request, optionally with a content body,
            and return the response, optionally as raw text.
@@ -321,9 +331,7 @@ class MWSConnection(AWSQueryConnection):
             boto.log.error('%s' % body)
             raise self._response_error_factory(response.status,
                                                response.reason, body)
-        digest = response.getheader('Content-MD5')
-        if digest is not None:
-            assert content_md5(body) == digest
+        self._assert_content_md5(response)
         contenttype = response.getheader('Content-Type')
         return self._parse_response(parser, contenttype, body)
 

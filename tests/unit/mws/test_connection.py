@@ -201,5 +201,14 @@ doc/2009-01-01/">
             sandbox=True)
         self.assertEqual(conn._sandboxify('a/bogus/path'), 'a/bogus_Sandbox/path')
 
+    def test__assert_content_md5(self):
+
+        conn = MWSConnection(https_connection_factory=self.https_connection_factory,
+            aws_access_key_id='aws_access_key_id',
+            aws_secret_access_key='aws_secret_access_key')
+        with open('/home/mark/PycharmProjects/py3sandbox/report-body.txt', 'rb') as f:
+            content = f.read()
+        self.assertTrue(conn._content_md5_matches_header(content, 'fTvKYGY+lxq100ncfU0t4w=='))
+
 if __name__ == '__main__':
     unittest.main()
